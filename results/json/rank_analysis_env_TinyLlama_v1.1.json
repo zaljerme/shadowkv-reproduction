@@ -1,5 +1,5 @@
 {
-  "model": "Qwen/Qwen2.5-0.5B",
+  "model": "TinyLlama/TinyLlama_v1.1",
   "python": "3.14.3",
   "torch": "2.14.0+cpu",
   "transformers": "5.17.0",
@@ -15,7 +15,10 @@
     32,
     64,
     96,
-    128
+    128,
+    160,
+    192,
+    256
   ],
   "n_prompts": 2,
   "dtype": "float32"

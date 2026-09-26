@@ -1,0 +1,25 @@
+{
+  "model": "Qwen/Qwen2.5-0.5B",
+  "python": "3.14.3",
+  "torch": "2.14.0+cpu",
+  "transformers": "5.17.0",
+  "lengths": [
+    1024,
+    2048,
+    4096
+  ],
+  "ranks": [
+    4,
+    8,
+    16,
+    32,
+    64,
+    96,
+    128,
+    160,
+    192,
+    256
+  ],
+  "n_prompts": 2,
+  "dtype": "float32"
+}

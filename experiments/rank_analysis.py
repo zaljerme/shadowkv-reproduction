@@ -1,10 +1,12 @@
 # Phase 4 + 5: how low-rank are real key caches, and does RoPE change that?
-# Model: Qwen2.5-0.5B (24 layers, 2 KV heads, head_dim 64, RoPE + GQA)
 # Per layer, keys form a matrix [tokens, kv_heads * head_dim], same layout ShadowKV uses for SVD.
 # We compare keys BEFORE RoPE (k_proj output) and AFTER RoPE (what the KV cache stores).
+# Also reports centered rank (mean removed), since a large k_proj bias can fake low rank.
+# Usage: python experiments\rank_analysis.py [model_name]
 
 import json
 import platform
+import sys
 from pathlib import Path
 
 import matplotlib
@@ -17,9 +19,10 @@ from datasets import load_dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 ROOT = Path(__file__).resolve().parents[1]
-MODEL = "Qwen/Qwen2.5-0.5B"
+MODEL = sys.argv[1] if len(sys.argv) > 1 else "Qwen/Qwen2.5-0.5B"
+TAG = MODEL.split("/")[-1]
 LENGTHS = [1024, 2048, 4096]
-RANKS = [4, 8, 16, 32, 64, 96, 128]
+RANKS = [4, 8, 16, 32, 64, 96, 128, 160, 192, 256]
 N_PROMPTS = 2
 
 # Load model
@@ -64,11 +67,15 @@ def spectrum(K):
     return s, energy
 
 
+def rank_for(energy, target):
+    return int((energy < target).sum()) + 1
+
+
 rows, spectra = [], []
 
 for p, prompt in enumerate(prompts):
     with torch.no_grad():
-        # model.model skips the output head, saving ~2.5 GB of RAM
+        # model.model skips the output head to save RAM
         out = model.model(prompt[None], use_cache=True)
 
     for i in range(n_layers):
@@ -77,16 +84,20 @@ for p, prompt in enumerate(prompts):
 
         for kind, K_all in keys.items():
             for n in LENGTHS:
-                s, energy = spectrum(K_all[:n])
+                K = K_all[:n].float()
+                s, energy = spectrum(K)
+                _, energy_c = spectrum(K - K.mean(dim=0))
+
                 row = {"prompt": p, "layer": i, "kind": kind, "tokens": n,
-                       "rank_90": int((energy < 0.90).sum()) + 1,
-                       "rank_99": int((energy < 0.99).sum()) + 1}
+                       "dim": K.shape[1],
+                       "rank_90": rank_for(energy, 0.90),
+                       "rank_99": rank_for(energy, 0.99),
+                       "rank_99_centered": rank_for(energy_c, 0.99)}
                 for r in RANKS:
                     if r <= len(energy):
-                        e = energy[r - 1].item()
-                        row[f"energy_r{r}"] = e
-                        # best rank-r approximation error (Eckart-Young)
-                        row[f"relerr_r{r}"] = max(0.0, 1 - e) ** 0.5
+                        # best rank-r error (Eckart-Young), raw and centered
+                        row[f"relerr_r{r}"] = max(0.0, 1 - energy[r - 1].item()) ** 0.5
+                        row[f"relerr_c_r{r}"] = max(0.0, 1 - energy_c[r - 1].item()) ** 0.5
                 rows.append(row)
 
                 if p == 0 and n == max_len:
@@ -99,9 +110,9 @@ df = pd.DataFrame(rows)
 df_spec = pd.DataFrame(spectra)
 
 # Save results
-df.to_csv(ROOT / "results/csv/key_rank_analysis.csv", index=False)
-df_spec.to_csv(ROOT / "results/csv/key_spectrum.csv", index=False)
-with open(ROOT / "results/json/rank_analysis_env.json", "w") as f:
+df.to_csv(ROOT / f"results/csv/key_rank_analysis_{TAG}.csv", index=False)
+df_spec.to_csv(ROOT / f"results/csv/key_spectrum_{TAG}.csv", index=False)
+with open(ROOT / f"results/json/rank_analysis_env_{TAG}.json", "w") as f:
     json.dump({"model": MODEL,
                "python": platform.python_version(),
                "torch": torch.__version__,
@@ -111,17 +122,20 @@ with open(ROOT / "results/json/rank_analysis_env.json", "w") as f:
 
 # Print summary at 4K tokens
 d = df[df.tokens == max_len]
+dim = int(d["dim"].iloc[0])
+print(f"\nModel: {MODEL}   key dim per layer: {dim}")
 print("\nMean relative error across layers and prompts (4K tokens)")
-print(f"{'rank':>5} | {'pre-RoPE':>9} | {'post-RoPE':>9}")
+print(f"{'rank':>5} | {'pre':>7} | {'post':>7} | {'pre_c':>7} | {'post_c':>7}")
 for r in RANKS:
-    col = f"relerr_r{r}"
-    if col in d:
-        pre = d[d.kind == "pre_rope"][col].mean()
-        post = d[d.kind == "post_rope"][col].mean()
-        print(f"{r:>5} | {pre:9.4f} | {post:9.4f}")
+    if f"relerr_r{r}" in d:
+        pre = d[d.kind == "pre_rope"]
+        post = d[d.kind == "post_rope"]
+        print(f"{r:>5} | {pre[f'relerr_r{r}'].mean():7.4f} | {post[f'relerr_r{r}'].mean():7.4f} | "
+              f"{pre[f'relerr_c_r{r}'].mean():7.4f} | {post[f'relerr_c_r{r}'].mean():7.4f}")
 
-per_layer = d.groupby(["layer", "kind"])["rank_99"].mean().unstack()
-print("\nRank needed for 99% energy, per layer (4K tokens)")
+per_layer = d.groupby(["layer", "kind"])[["rank_99", "rank_99_centered"]].mean().unstack()
+per_layer.columns = [f"{a}_{b}" for a, b in per_layer.columns]
+print("\nRank for 99% energy per layer (4K tokens)")
 print(per_layer.round(1).to_string())
 
 # Plot
@@ -131,12 +145,13 @@ ax = axes[0]
 for kind in ["pre_rope", "post_rope"]:
     sub = d[d.kind == kind]
     ranks = [r for r in RANKS if f"relerr_r{r}" in sub]
-    means = [sub[f"relerr_r{r}"].mean() for r in ranks]
-    stds = [sub[f"relerr_r{r}"].std() for r in ranks]
-    ax.errorbar(ranks, means, yerr=stds, marker="o", capsize=3, label=kind)
+    for prefix, style in [("relerr_r", "-"), ("relerr_c_r", "--")]:
+        means = [sub[f"{prefix}{r}"].mean() for r in ranks]
+        label = kind + (" centered" if prefix == "relerr_c_r" else "")
+        ax.plot(ranks, means, style, marker="o", label=label)
 ax.set_xlabel("Rank")
-ax.set_ylabel("Relative error ||K - K_r|| / ||K||")
-ax.set_title("Rank vs reconstruction error (4K tokens)")
+ax.set_ylabel("Relative error")
+ax.set_title(f"{TAG}: rank vs error (4K tokens)")
 ax.legend()
 
 ax = axes[1]
@@ -151,13 +166,13 @@ ax.set_title("Singular value spectrum")
 ax.legend(fontsize=7)
 
 ax = axes[2]
-ax.plot(per_layer.index, per_layer["pre_rope"], marker="o", label="pre_rope")
-ax.plot(per_layer.index, per_layer["post_rope"], marker="o", label="post_rope")
+for col in per_layer.columns:
+    ax.plot(per_layer.index, per_layer[col], marker="o", label=col)
 ax.set_xlabel("Layer")
 ax.set_ylabel("Rank for 99% energy")
 ax.set_title("Compressibility per layer")
-ax.legend()
+ax.legend(fontsize=7)
 
 fig.tight_layout()
-fig.savefig(ROOT / "results/figures/key_rank_analysis.png", dpi=150)
+fig.savefig(ROOT / f"results/figures/key_rank_analysis_{TAG}.png", dpi=150)
 print("\nSaved results to results/")
