@@ -1,0 +1,9 @@
+{
+  "python": "3.14.3",
+  "torch": "2.14.0+cpu",
+  "cpu": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+  "threads": 4,
+  "dtype": "float32",
+  "warmup": 3,
+  "steps": 20
+}
