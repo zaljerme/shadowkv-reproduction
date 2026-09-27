@@ -36,3 +36,28 @@
 
 \- Open question: energy-based error may not reflect attention error. Test in Phase 7.
 
+
+
+
+\## Phase 6-7: attention fidelity with low-rank keys (4K tokens, last 64 queries, top-64)
+
+\- Our RoPE matches the model cache exactly (relative error 0) on both models.
+
+\- Pre-RoPE SVD beats post-RoPE SVD at every rank on both models.
+
+&#x20; TinyLlama rank 64: recall 0.86 vs 0.67, output error 0.19 vs 0.44, KL 0.09 vs 0.43.
+
+\- Corrects Phase 5: centered energy suggested pre and post were similar on TinyLlama,
+
+&#x20; but at the attention level pre-RoPE is much better. The shared mean direction matters for attention.
+
+\- Not lossless at ShadowKV-like budgets: TinyLlama at 13 to 27% memory gives recall 0.78 to 0.86,
+
+&#x20; output error 0.19 to 0.30. Qwen at 26% gives recall 0.82, error 0.35.
+
+\- Per-layer: early layers compress best (TinyLlama L0 0.99, L1 0.95 at rank 64),
+
+&#x20; middle layers are similar (0.82 to 0.88). Adaptive rank may have limited gains beyond early layers.
+
+\- Caveat: layers tested in isolation, not end to end.
+

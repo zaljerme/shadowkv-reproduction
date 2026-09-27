@@ -1,0 +1,22 @@
+{
+  "model": "Qwen/Qwen2.5-0.5B",
+  "context": 4096,
+  "queries": 64,
+  "topk": 64,
+  "ranks": [
+    8,
+    16,
+    32,
+    64,
+    96,
+    128,
+    160,
+    192
+  ],
+  "n_prompts": 2,
+  "rope_rel_err": 0.0,
+  "python": "3.14.3",
+  "torch": "2.14.0+cpu",
+  "transformers": "5.17.0",
+  "dtype": "float32"
+}
