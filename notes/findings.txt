@@ -1,68 +1,34 @@
-﻿# Findings log
-
-
+# Findings log
 
 ## Phase 3: KV cache scaling (CPU, one Llama-3-8B shaped layer, fp32)
-
 - Cache size matches formula exactly: 8 MB per 1K tokens per layer.
-
 - Decode latency roughly linear in context above 4K: 25 ms at 1K, 413 ms at 32K.
-
 - Caveat: naive cache uses torch.cat and repeat_interleave, so latency overstates pure attention cost.
 
-
-
 ## Phase 4-5: key rank, pre vs post RoPE (4K tokens, 2 WikiText prompts)
-
 - Pre-RoPE keys are more compressible than post-RoPE on both Qwen2.5-0.5B and TinyLlama v1.1.
-
   Rank 64 relative error: Qwen 0.063 pre vs 0.149 post; TinyLlama 0.107 pre vs 0.255 post.
-
 - Qwen layers 0, 1, 2, 8 look rank 1 because the k_proj bias dominates the keys
-
   (key norm roughly equals bias norm). Centered, they need 89 to 95 of 128 dims.
-
 - TinyLlama (no bias) still has a large shared mean direction: raw rank_99 about 55 to 97 of 256,
-
   centered about 135 to 170.
-
 - On TinyLlama, after removing the mean, pre and post RoPE error are nearly equal
-
   (0.255 vs 0.276 at rank 64). Observation: much of RoPE's damage to low rank comes from
-
   rotating the shared mean direction. On Qwen, RoPE hurts beyond the mean (0.150 vs 0.237).
-
 - Layer variation: TinyLlama layers 0 and 1 need 11 and 19 dims pre-RoPE, middle layers 70 to 97.
-
-- Open question: energy-based error may not reflect attention error. Test in Phase 7.
-
-
-
+- Open question: energy-based error may not reflect attention error. Answered in Phase 7: it does not.
 
 ## Phase 6-7: attention fidelity with low-rank keys (4K tokens, last 64 queries, top-64)
-
 - Our RoPE matches the model cache exactly (relative error 0) on both models.
-
 - Pre-RoPE SVD beats post-RoPE SVD at every rank on both models.
-
   TinyLlama rank 64: recall 0.86 vs 0.67, output error 0.19 vs 0.44, KL 0.09 vs 0.43.
-
 - Corrects Phase 5: centered energy suggested pre and post were similar on TinyLlama,
-
   but at the attention level pre-RoPE is much better. The shared mean direction matters for attention.
-
 - Not lossless at ShadowKV-like budgets: TinyLlama at 13 to 27% memory gives recall 0.78 to 0.86,
-
   output error 0.19 to 0.30. Qwen at 26% gives recall 0.82, error 0.35.
-
 - Per-layer: early layers compress best (TinyLlama L0 0.99, L1 0.95 at rank 64),
-
   middle layers are similar (0.82 to 0.88). Adaptive rank may have limited gains beyond early layers.
-
 - Caveat: layers tested in isolation, not end to end.
-
-
-
 
 ## Phase 8-9: landmarks, outliers, chunk selection (exact post-RoPE keys, context 4032, 64 queries)
 - Locality holds: mean cosine between keys and their chunk mean is 0.91 at chunk 8 on both models.
@@ -76,3 +42,15 @@
   at the cost of more landmarks.
 - At 1.6% budget, only 45 to 62% of attention mass is captured at 4K context.
   Cannot extrapolate to 128K; attention may be sparser at long context.
+
+## Phase 10-11: full ShadowKV attention path (context 4032, chunk 8, 1% outliers, 64 queries)
+- Components: low-rank pre-RoPE keys, landmark + outlier chunk selection, rebuild only selected keys
+  then RoPE, exact keys for outlier chunks, exact values.
+- TinyLlama: error sources combine roughly independently. Rank 128 alone 0.088, budget 512 alone 0.122,
+  together 0.160 (quadrature estimate 0.150).
+- Qwen: full ShadowKV has lower error than low-rank alone (rank 64: 0.22 at budget 512 vs 0.42 dense).
+  Hypothesis: exact outlier chunks protect high-attention tokens that low-rank compression distorts.
+  Not yet verified.
+- At about 20% of full KV GPU memory: output error 0.24 to 0.31 per layer at 4K.
+- Limitation: queries see only the first 4032 tokens, not the recent window. Likely pessimistic.
+- Per-layer error does not tell us generation quality. Needs end-to-end test.
