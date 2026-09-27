@@ -1,3 +1,14 @@
+# ShadowKV inside a Hugging Face model.
+# Registers a custom attention function. Prefill always uses exact causal attention.
+# During decode, the prefill context is handled according to STATE.mode:
+#   full              exact attention over everything
+#   lowrank           all context keys rebuilt from low-rank pre-RoPE keys
+#   lowrank_outliers  low-rank keys, but outlier chunks keep exact keys
+#   sparse            landmark + outlier chunk selection, exact keys
+#   shadowkv          selection + rebuild only selected keys, exact outlier keys
+#   streaming         first `sink` tokens + most recent context tokens, exact (StreamingLLM style)
+# Tokens added after prefill (the recent window) are always exact.
+
 import math
 from dataclasses import dataclass, field
 
@@ -19,6 +30,8 @@ class ShadowState:
     budget: int = 256
     chunk: int = 8
     outlier_frac: float = 0.01
+    sink: int = 4
+    stream_tokens: int = 0
     layers: dict = field(default_factory=dict)
     rope_cos: torch.Tensor = None
     rope_sin: torch.Tensor = None
@@ -79,11 +92,21 @@ def shadowkv_attention(module, query, key, value, attention_mask=None,
     k_recent, v_recent = k_all[:, P:], v_all[:, P:]
     kv = torch.arange(Hkv)[:, None, None]
 
-    if STATE.mode == "lowrank":
+    if STATE.mode in ("lowrank", "lowrank_outliers"):
         if "k_rec_all" not in L:
             k_rec = L["lr"].reconstruct().reshape(P, Hkv, d).transpose(0, 1)
             L["k_rec_all"] = apply_rope(k_rec, STATE.rope_cos[:P], STATE.rope_sin[:P]).to(q.dtype)
-        k_sel, v_sel = L["k_rec_all"][:, None], v_ctx[:, None]   # [kv_heads, 1, P, d]
+        k_use = L["k_rec_all"]
+        if STATE.mode == "lowrank_outliers":
+            tok_out = L["out_mask"].repeat_interleave(STATE.chunk, -1)   # [kv_heads, P]
+            k_use = torch.where(tok_out[..., None], k_ctx, k_use)
+        k_sel, v_sel = k_use[:, None], v_ctx[:, None]                   # [kv_heads, 1, P, d]
+
+    elif STATE.mode == "streaming":
+        n = STATE.stream_tokens
+        idx = torch.cat([torch.arange(STATE.sink), torch.arange(P - (n - STATE.sink), P)])
+        k_sel, v_sel = k_ctx[:, idx][:, None], v_ctx[:, idx][:, None]
+
     else:
         c = STATE.chunk
         out_mask = L["out_mask"]

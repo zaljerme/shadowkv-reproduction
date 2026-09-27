@@ -73,3 +73,16 @@
 - Full ShadowKV beats low-rank alone at a quarter of the memory. Likely due to exact outliers and
   exact recent tokens. Needs an ablation to confirm.
 - Small sample (256 predictions). Differences of 1 to 2% in agreement are within noise.
+
+
+
+## Phase 13: baselines and ablation, end to end on Qwen2.5-0.5B (prefill 3968, 128 decode steps, 4 prompts)
+- Full cache perplexity 12.76.
+- Outlier ablation: low-rank r=1/4 alone +20.2% perplexity; keeping outlier chunks (1%, about 40 tokens)
+  exact drops it to +3.4%. Confirms that outlier tokens explain most of low-rank's damage on Qwen.
+- Equal memory vs StreamingLLM (sink 4 + recent, about 20% GPU memory):
+  ShadowKV r=1/4 B=512 +4.0%, KL 0.060, agreement 0.898 (std 0.045).
+  Streaming 800 tokens +7.4%, KL 0.090, agreement 0.883 (std 0.096).
+  ShadowKV is better and more consistent across prompts; agreement difference alone is within noise.
+- ShadowKV r=1/2 B=512 (33% memory): +1.7%, close to exact-key sparse selection (+1.6% at 57%).
+- Caveat: WikiText perplexity favors local context (best case for streaming). Retrieval tests needed.
