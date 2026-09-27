@@ -1,0 +1,31 @@
+{
+  "model": "Qwen/Qwen2.5-0.5B",
+  "context": 4032,
+  "queries": 64,
+  "topk": 64,
+  "chunks": [
+    4,
+    8,
+    16,
+    32
+  ],
+  "outlier_fracs": [
+    0.0,
+    0.005,
+    0.01,
+    0.02,
+    0.05
+  ],
+  "budgets": [
+    64,
+    128,
+    256,
+    512
+  ],
+  "n_prompts": 2,
+  "python": "3.14.3",
+  "torch": "2.14.0+cpu",
+  "transformers": "5.17.0",
+  "dtype": "float32",
+  "keys": "exact post-RoPE"
+}
