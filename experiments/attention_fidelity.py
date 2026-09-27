@@ -1,12 +1,3 @@
-# Phase 6 + 7: does a low-rank key cache preserve attention?
-# For each layer we take the model's real queries, keys and values, compress the keys
-# with SVD at different ranks, and compare attention against the exact version.
-# Two variants:
-#   pre_rope  (ShadowKV): SVD on keys before RoPE, then apply RoPE to the reconstruction
-#   post_rope (baseline): SVD directly on the cached keys (after RoPE)
-# Only keys are compressed. Each layer is tested on its own (not end to end).
-# Usage: python experiments\attention_fidelity.py [model_name]
-
 import json
 import math
 import platform

@@ -54,3 +54,22 @@
 - At about 20% of full KV GPU memory: output error 0.24 to 0.31 per layer at 4K.
 - Limitation: queries see only the first 4032 tokens, not the recent window. Likely pessimistic.
 - Per-layer error does not tell us generation quality. Needs end-to-end test.
+
+
+## CORRECTION: TinyLlama context length
+- TinyLlama v1.1 was trained with a 2048-token context. All TinyLlama runs in Phases 4 to 11 used
+  4096 tokens, so positions past 2048 are out of distribution. Treat those TinyLlama numbers as
+  unreliable. Qwen2.5-0.5B supports 32K, so Qwen results stand.
+- End-to-end TinyLlama at 3968 tokens gave full-cache perplexity around 6000 (broken model), confirming this.
+- Plan: replace TinyLlama with Llama-3.2-1B (128K context) and rerun.
+
+## Phase 14: end-to-end in Qwen2.5-0.5B (prefill 3968 exact, then 128 teacher-forced decode steps, 2 prompts)
+- Our custom attention matches stock attention exactly (max logit difference 0).
+- Full cache perplexity 14.74.
+- ShadowKV rank 1/4, budget 512, about 20% GPU memory: perplexity +5.7%, top-1 agreement 0.867, KL 0.082.
+- ShadowKV rank 1/4, budget 256: +7.2%. Rank 1/2, budget 512 (33% memory): +4.3%.
+- Low-rank keys alone are worst: +18.6% at rank 1/4, +10.3% at rank 1/2 (76% memory).
+- Sparse selection alone with exact keys: +3.3% at budget 512 (57% memory).
+- Full ShadowKV beats low-rank alone at a quarter of the memory. Likely due to exact outliers and
+  exact recent tokens. Needs an ablation to confirm.
+- Small sample (256 predictions). Differences of 1 to 2% in agreement are within noise.

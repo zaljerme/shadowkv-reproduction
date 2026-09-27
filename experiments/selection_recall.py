@@ -1,8 +1,3 @@
-# Phase 8-10: do landmarks and outliers find the tokens attention needs?
-# Uses exact post-RoPE keys (no low-rank yet) to isolate selection quality.
-# Context = first 4032 tokens, queries = last 64 positions (all see the full context).
-# Usage: python experiments\selection_recall.py [model_name]
-
 import json
 import math
 import platform

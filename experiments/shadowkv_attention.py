@@ -1,12 +1,3 @@
-# Phase 10-11: the full ShadowKV attention path on CPU
-# Pre-RoPE keys stored low-rank, landmarks + outliers pick chunks, only the selected keys are
-# rebuilt (then RoPE), outlier chunks use exact keys, values are exact.
-# Compared with full attention, plus two partial versions to see where error comes from:
-#   lowrank_dense: low-rank keys only (all tokens)
-#   sparse_exact:  chunk selection only (exact keys)
-#   shadowkv:      both together
-# Usage: python experiments\shadowkv_attention.py [model_name]
-
 import json
 import math
 import platform

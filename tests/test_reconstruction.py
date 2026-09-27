@@ -36,3 +36,13 @@ def test_sparse_attention_with_all_tokens_equals_dense():
 def test_chunk_to_token_idx():
     idx = chunk_to_token_idx(torch.tensor([[0, 2]]), 4)
     assert idx.tolist() == [[0, 1, 2, 3, 8, 9, 10, 11]]
+
+
+
+
+def test_inverse_rope_roundtrip():
+    torch.manual_seed(0)
+    x = torch.randn(2, 16, 8)
+    cos, sin = rope_cos_sin(torch.arange(16), 8)
+    y = apply_rope(x, cos, sin)
+    assert torch.allclose(apply_rope(y, cos, -sin), x, atol=1e-5)

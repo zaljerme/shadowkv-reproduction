@@ -1,0 +1,13 @@
+{
+  "model": "TinyLlama/TinyLlama_v1.1",
+  "prefill": 3968,
+  "decode_steps": 128,
+  "n_prompts": 2,
+  "chunk": 8,
+  "outlier_frac": 0.01,
+  "sanity_max_logit_diff": 0.0,
+  "python": "3.14.3",
+  "torch": "2.14.0+cpu",
+  "transformers": "5.17.0",
+  "dtype": "float32"
+}
