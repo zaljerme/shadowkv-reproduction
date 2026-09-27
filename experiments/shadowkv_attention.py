@@ -20,7 +20,7 @@ from shadowkv.low_rank import LowRankKeys
 from shadowkv.landmarks import build_landmarks, outlier_mask
 from shadowkv.selector import select_chunks
 from shadowkv.reconstruction import chunk_to_token_idx, reconstruct_selected, sparse_attention
-from models.toy_attention import rope_cos_sin, apply_rope
+from models.toy_attention import rope_cos_sin, rope_cos_sin_from_model, apply_rope
 
 MODEL = sys.argv[1] if len(sys.argv) > 1 else "TinyLlama/TinyLlama_v1.1"
 TAG = MODEL.split("/")[-1]
@@ -86,7 +86,7 @@ def metrics(o, ref):
             "out_cos": F.cosine_similarity(o, ref, dim=-1).mean().item()}
 
 
-rope_cos, rope_sin = rope_cos_sin(torch.arange(T), head_dim, base=theta)
+rope_cos, rope_sin = rope_cos_sin_from_model(model, T)
 kv_idx = torch.arange(n_kv)[:, None, None]
 rows = []
 

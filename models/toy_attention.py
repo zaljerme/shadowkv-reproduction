@@ -75,3 +75,13 @@ class ToyAttention(nn.Module):
         attn = F.softmax(scores, dim=-1)
         out = (attn @ v_full).transpose(1, 2).reshape(B, T, -1)
         return self.o_proj(out)
+
+
+def rope_cos_sin_from_model(model, n_positions):
+    """RoPE angles using the model's own frequencies (handles scaled RoPE such as Llama 3)."""
+    rot = model.model.rotary_emb
+    inv_freq = rot.inv_freq.float()
+    scale = float(getattr(rot, "attention_scaling", 1.0))
+    angles = torch.arange(n_positions).float()[:, None] * inv_freq[None, :]
+    angles = torch.cat([angles, angles], dim=-1)
+    return angles.cos() * scale, angles.sin() * scale

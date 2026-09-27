@@ -44,7 +44,7 @@ n_kv = cfg.num_key_value_heads
 head_dim = getattr(cfg, "head_dim", None) or cfg.hidden_size // n_heads
 theta = getattr(cfg, "rope_theta", None) or cfg.rope_parameters["rope_theta"]
 D = n_kv * head_dim
-setup_rope(P + G + 1, head_dim, theta)
+setup_rope(P + G + 1, head_dim, theta, model)
 
 text = "\n".join(load_dataset("Salesforce/wikitext", "wikitext-2-raw-v1", split="test")["text"])
 ids = tok(text, return_tensors="pt").input_ids[0]

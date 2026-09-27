@@ -9,7 +9,7 @@ from shadowkv.low_rank import LowRankKeys
 from shadowkv.landmarks import build_landmarks, outlier_mask
 from shadowkv.selector import select_chunks
 from shadowkv.reconstruction import chunk_to_token_idx, reconstruct_selected
-from models.toy_attention import rope_cos_sin, apply_rope
+from models.toy_attention import rope_cos_sin, rope_cos_sin_from_model, apply_rope
 
 
 @dataclass
@@ -27,8 +27,11 @@ class ShadowState:
 STATE = ShadowState()
 
 
-def setup_rope(max_pos, head_dim, theta):
-    STATE.rope_cos, STATE.rope_sin = rope_cos_sin(torch.arange(max_pos), head_dim, base=theta)
+def setup_rope(max_pos, head_dim, theta, model=None):
+    if model is not None:
+        STATE.rope_cos, STATE.rope_sin = rope_cos_sin_from_model(model, max_pos)
+    else:
+        STATE.rope_cos, STATE.rope_sin = rope_cos_sin(torch.arange(max_pos), head_dim, base=theta)
 
 
 def build_layer_structs(cache_keys, P):

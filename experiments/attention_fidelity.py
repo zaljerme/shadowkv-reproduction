@@ -17,7 +17,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from shadowkv.low_rank import LowRankKeys
-from models.toy_attention import rope_cos_sin, apply_rope
+from models.toy_attention import rope_cos_sin, rope_cos_sin_from_model, apply_rope
 
 MODEL = sys.argv[1] if len(sys.argv) > 1 else "Qwen/Qwen2.5-0.5B"
 TAG = MODEL.split("/")[-1]
@@ -82,7 +82,7 @@ def flat(x):
 
 
 pos = torch.arange(T)
-rope_cos, rope_sin = rope_cos_sin(pos, head_dim, base=theta)
+rope_cos, rope_sin = rope_cos_sin_from_model(model, T)
 mask = pos[None, :] > pos[-M:][:, None]  # [M, T] causal mask
 
 
