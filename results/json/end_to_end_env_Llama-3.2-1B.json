@@ -1,0 +1,14 @@
+{
+  "model": "meta-llama/Llama-3.2-1B",
+  "prefill": 3968,
+  "decode_steps": 128,
+  "n_prompts": 4,
+  "chunk": 8,
+  "outlier_frac": 0.01,
+  "sink": 4,
+  "sanity_max_logit_diff": 0.0,
+  "python": "3.14.3",
+  "torch": "2.14.0+cpu",
+  "transformers": "5.17.0",
+  "dtype": "float32"
+}

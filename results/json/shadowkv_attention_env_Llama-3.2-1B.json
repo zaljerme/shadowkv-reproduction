@@ -1,0 +1,22 @@
+{
+  "model": "meta-llama/Llama-3.2-1B",
+  "context": 4032,
+  "queries": 64,
+  "chunk": 8,
+  "outlier_frac": 0.01,
+  "budgets": [
+    128,
+    256,
+    512
+  ],
+  "rank_fracs": [
+    0.125,
+    0.25,
+    0.5
+  ],
+  "n_prompts": 2,
+  "python": "3.14.3",
+  "torch": "2.14.0+cpu",
+  "transformers": "5.17.0",
+  "dtype": "float32"
+}
