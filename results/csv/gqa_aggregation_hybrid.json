@@ -1,0 +1,19 @@
+{
+  "model": "Qwen/Qwen2.5-0.5B",
+  "layers": [
+    0,
+    3,
+    8,
+    22
+  ],
+  "context": 1024,
+  "historical_tokens": 1008,
+  "queries": 16,
+  "chunk_size": 8,
+  "budget": 256,
+  "prompts": 3,
+  "dtype": "float32",
+  "torch": "2.6.0+cu126",
+  "evaluation": "historical-prefix attention",
+  "outlier_chunks": false
+}

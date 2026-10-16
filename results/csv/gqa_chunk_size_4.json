@@ -1,0 +1,32 @@
+{
+  "model": "Qwen/Qwen2.5-1.5B",
+  "context": 4096,
+  "layers": [
+    0,
+    3,
+    8,
+    22
+  ],
+  "queries_per_prompt": 16,
+  "prompts": 10,
+  "historical_tokens": 4080,
+  "historical_budget": 256,
+  "recent_window": 16,
+  "chunk_size": 4,
+  "dataset": "wikitext-2-raw-v1",
+  "split": "validation",
+  "reference": "full causal attention",
+  "layer_aware_sink_layers": [
+    3,
+    8,
+    22
+  ],
+  "methods": [
+    "mean",
+    "max_sink",
+    "mean_sink",
+    "layer_aware",
+    "oracle"
+  ],
+  "torch_version": "2.6.0+cu126"
+}

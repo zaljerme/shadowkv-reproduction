@@ -77,11 +77,27 @@ class ToyAttention(nn.Module):
         return self.o_proj(out)
 
 
+
+
 def rope_cos_sin_from_model(model, n_positions):
-    """RoPE angles using the model's own frequencies (handles scaled RoPE such as Llama 3)."""
-    rot = model.model.rotary_emb
+    """Generate RoPE angles using the model's own frequencies."""
+
+    # Support both Qwen2Model and Qwen2ForCausalLM
+    backbone = model.model if hasattr(model, "model") else model
+
+    rot = backbone.rotary_emb
     inv_freq = rot.inv_freq.float()
     scale = float(getattr(rot, "attention_scaling", 1.0))
-    angles = torch.arange(n_positions).float()[:, None] * inv_freq[None, :]
+
+    positions = torch.arange(
+        n_positions,
+        device=inv_freq.device,
+        dtype=torch.float32
+    )
+
+    angles = positions[:, None] * inv_freq[None, :]
     angles = torch.cat([angles, angles], dim=-1)
+
     return angles.cos() * scale, angles.sin() * scale
+
+
