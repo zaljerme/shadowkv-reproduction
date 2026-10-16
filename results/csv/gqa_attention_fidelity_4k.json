@@ -1,0 +1,38 @@
+{
+  "model": "Qwen/Qwen2.5-0.5B",
+  "layers": [
+    0,
+    3,
+    8,
+    22
+  ],
+  "context": 4096,
+  "historical_tokens": 4080,
+  "queries": 16,
+  "chunk_size": 8,
+  "budget": 256,
+  "prompts": 10,
+  "dataset": "wikitext-2-raw-v1",
+  "split": "validation",
+  "prompt_start_window": 0,
+  "dtype": "float32",
+  "torch": "2.6.0+cu126",
+  "evaluation": "historical-prefix attention output",
+  "reference": "exact historical attention",
+  "metrics": [
+    "mass",
+    "relative_l2",
+    "cosine"
+  ],
+  "layer_aware_sink_layers": [
+    3,
+    8
+  ],
+  "methods": [
+    "mean",
+    "max_sink",
+    "mean_sink",
+    "layer_aware",
+    "oracle"
+  ]
+}

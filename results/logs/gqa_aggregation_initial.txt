@@ -1,0 +1,8 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights:  40%|███▉      | 115/290 [00:00<00:00, 1149.57it/s]Loading weights:  79%|███████▉  | 230/290 [00:00<00:00, 1017.08it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 1073.97it/s]
+Actual sequence length: 1024
+Historical context tokens: 1016
+max: attention mass = 0.8358
+mean: attention mass = 0.8409
+oracle: attention mass = 0.8543
+Actual tokens per KV head: 256
